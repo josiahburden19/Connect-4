@@ -1,32 +1,35 @@
-function start(self)
-	self.game_array = {{}}
+function init(self)
 	self.size = vmath.vector3()
 	self.size.x, self.size.y = window.get_size()
+	self.tile_size = 100
+	self.rows, self.columns = 6, 10
+	self.list_coords_x = {}
+	self.factory_instances = {}
+	self.first_coord = vmath.vector3()
 	self.snap_coord = vmath.vector3(0, 680, 1)
 	self.board = {}
-	self.tokens_1 = {}
-	self.tokens_2 = {}
 	self.turn = false
 	self.started_snapping = false
+	self.connect_fours = {}
+	
+	local coord = vmath.vector3()
+	for i=0, self.columns-1, 1 do
+		self.factory_instances[i + 1] = {}
+		for j=0, self.rows-1, 1 do
+			coord.x = (i*self.tile_size) + (self.size.x/2) - (self.columns * self.tile_size/2) + (self.tile_size/2)
+			coord.y = (j*self.tile_size) + (self.size.y/2) - (self.rows * self.tile_size/2) + (self.tile_size/2) - 50
+			self.factory_instances[i + 1][j + 1] = factory.create('#factory', vmath.vector3(coord.x, coord.y, 0))
+			if i == 0 and j == 0 then
+				self.first_coord = coord
+			end
+		end
+		table.insert(self.list_coords_x, coord.x)
+	end
+
 	for i = 0, self.columns + 1, 1 do
 		self.board[i] = {}
-		-- for j = 0, self.rows - 1, 1 do
-		-- 	self.board[i][j] = 'empty'
-		-- 	print(i, j)
-		-- end
 	end
 	msg.post('.', 'acquire_input_focus')
-end
-
-function on_message(self, message_id, message, sender)
-	if message_id == hash('rows/columns') then
-		self.rows = message.rows
-		self.columns = message.columns
-		self.tile_size = message.tile_size
-		self.list_coords = message.list_coords
-		self.first_coord = message.first_coord
-		start(self)
-	end
 end
 
 function on_input(self, action_id, action)
@@ -39,7 +42,7 @@ function on_input(self, action_id, action)
 			go.animate('/token', 'position', go.PLAYBACK_ONCE_FORWARD, self.snap_coord, go.EASING_OUTEXPO, 0.4)
 		end
 	end
-	if action_id == hash('touch') and action.pressed and indexOf(self.list_coords, self.snap_coord.x) ~= nil then
+	if action_id == hash('touch') and action.pressed and indexOf(self.list_coords_x, self.snap_coord.x) ~= nil then
 		place(self, self.turn)
 		checkBoard(self)
 		self.turn = not self.turn
@@ -68,7 +71,7 @@ end
 
 function place(self, token)
 	local coord = vmath.vector3()
-	local index = indexOf(self.list_coords, self.snap_coord.x)
+	local index = indexOf(self.list_coords_x, self.snap_coord.x)
 	if tableLength(self.board[index]) < self.rows then
 		table.insert(self.board[index], token)
 		coord.y = self.first_coord.y - (self.rows - tableLength(self.board[index])) * self.tile_size
@@ -88,10 +91,10 @@ function checkBoard(self)
 		function checkDirection(self, coord, token, direction, times)
 			for i=1, times - 2, 1 do
 				if not (self.board[coord.x + i * (direction.x)][coord.y + i * (direction.y)] == token) then
-					return false
+					return {false}
 				end
 			end
-			return true
+			return {true, direction}
 		end
 
 		local is_true = {}
@@ -99,8 +102,9 @@ function checkBoard(self)
 			for j=-1, 1, 1 do
 				if self.board[coord.x + i][coord.y + j] == token and not (j == 0 and i == 0) then
 					local new_coord = vmath.vector3(coord.x + i, coord.y + j, 0)
-					if checkDirection(self, new_coord, token, vmath.vector3(i, j, 0), 4) then
-						table.insert(is_true, true)
+					local checked_direction = checkDirection(self, new_coord, token, vmath.vector3(i, j, 0), 4)
+					if checked_direction[1] then
+						table.insert(is_true, checked_direction[2])
 					end
 				end
 			end
@@ -111,9 +115,14 @@ function checkBoard(self)
 	for i=1, self.columns, 1 do
 		for j=1, self.rows, 1 do
 			if self.board[i][j] ~= nil then
-				for i in pairs(checkAround(self, vmath.vector3(i, j, 0), self.board[i][j])) do
-					print(i, j)
-					print('4 IN A ROWWWWWWW')
+				local checked_board = checkAround(self, vmath.vector3(i, j, 0), self.board[i][j])
+				for k in pairs(checked_board) do
+					print(i, j, checked_board[k])
+					for l=0, 3, 1 do
+						local instance = tostring(self.factory_instances[i + l * (checked_board[k].x)][j + l * (checked_board[k].y)])
+						instance = string.sub(instance, 8, -2) .. '#sprite'
+						go.animate(instance, 'tint', go.PLAYBACK_ONCE_FORWARD, vmath.vector4(0.5, 1, 0.4, 1), go.EASING_LINEAR, 1)
+					end
 				end
 			end
 		end

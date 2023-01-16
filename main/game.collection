@@ -1,10 +1,10 @@
 name: "game"
 scale_along_z: 0
 embedded_instances {
-  id: "factory_background"
+  id: "main"
   data: "components {\n"
-  "  id: \"game_factory\"\n"
-  "  component: \"/main/scripts/game_factory.script\"\n"
+  "  id: \"game_logic\"\n"
+  "  component: \"/main/scripts/game_logic.script\"\n"
   "  position {\n"
   "    x: 0.0\n"
   "    y: 0.0\n"
@@ -35,43 +35,6 @@ embedded_instances {
   "    y: 0.0\n"
   "    z: 0.0\n"
   "    w: 1.0\n"
-  "  }\n"
-  "}\n"
-  ""
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  scale3 {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-  }
-}
-embedded_instances {
-  id: "main"
-  data: "components {\n"
-  "  id: \"game_logic\"\n"
-  "  component: \"/main/scripts/game_logic.script\"\n"
-  "  position {\n"
-  "    x: 0.0\n"
-  "    y: 0.0\n"
-  "    z: 0.0\n"
-  "  }\n"
-  "  rotation {\n"
-  "    x: 0.0\n"
-  "    y: 0.0\n"
-  "    z: 0.0\n"
-  "    w: 1.0\n"
-  "  }\n"
-  "  property_decls {\n"
   "  }\n"
   "}\n"
   ""
