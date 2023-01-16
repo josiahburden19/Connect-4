@@ -1,0 +1,122 @@
+function start(self)
+	self.game_array = {{}}
+	self.size = vmath.vector3()
+	self.size.x, self.size.y = window.get_size()
+	self.snap_coord = vmath.vector3(0, 680, 1)
+	self.board = {}
+	self.tokens_1 = {}
+	self.tokens_2 = {}
+	self.turn = false
+	self.started_snapping = false
+	for i = 0, self.columns + 1, 1 do
+		self.board[i] = {}
+		-- for j = 0, self.rows - 1, 1 do
+		-- 	self.board[i][j] = 'empty'
+		-- 	print(i, j)
+		-- end
+	end
+	msg.post('.', 'acquire_input_focus')
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash('rows/columns') then
+		self.rows = message.rows
+		self.columns = message.columns
+		self.tile_size = message.tile_size
+		self.list_coords = message.list_coords
+		self.first_coord = message.first_coord
+		start(self)
+	end
+end
+
+function on_input(self, action_id, action)
+	if action_id == nil then
+		self.snap_coord.x = (math.ceil((action.x-83)/self.tile_size) * self.tile_size) + 33 - (self.columns%2)*(self.tile_size/2)
+		if self.started_snapping == false then
+			go.set_position(self.snap_coord, '/token')
+			self.started_snapping = true
+		else
+			go.animate('/token', 'position', go.PLAYBACK_ONCE_FORWARD, self.snap_coord, go.EASING_OUTEXPO, 0.4)
+		end
+	end
+	if action_id == hash('touch') and action.pressed and indexOf(self.list_coords, self.snap_coord.x) ~= nil then
+		place(self, self.turn)
+		checkBoard(self)
+		self.turn = not self.turn
+		if self.turn then
+			sprite.play_flipbook('/token', 'token_2')
+		else
+			sprite.play_flipbook('/token', 'token_1')
+		end
+	end
+end
+
+function indexOf(array, value)
+	for i, v in ipairs(array) do
+		if v == value then
+			return i
+		end
+	end
+	return nil
+end
+
+function tableLength(t)
+	local count = 0
+	for _ in pairs(t) do count = count + 1 end
+	return count
+end
+
+function place(self, token)
+	local coord = vmath.vector3()
+	local index = indexOf(self.list_coords, self.snap_coord.x)
+	if tableLength(self.board[index]) < self.rows then
+		table.insert(self.board[index], token)
+		coord.y = self.first_coord.y - (self.rows - tableLength(self.board[index])) * self.tile_size
+		coord.x = self.snap_coord.x
+		if not token then
+			local spawned = factory.create('/token_1_factory#factory', vmath.vector3(coord.x, 680, 1))
+			go.animate(spawned, 'position.y', go.PLAYBACK_ONCE_FORWARD, coord.y, go.EASING_OUTBOUNCE, 1)
+		elseif token then
+			local spawned = factory.create('/token_2_factory#factory', vmath.vector3(coord.x, 680, 1))
+			go.animate(spawned, 'position.y', go.PLAYBACK_ONCE_FORWARD, coord.y, go.EASING_OUTBOUNCE, 1)
+		end
+	end
+end
+
+function checkBoard(self)
+	function checkAround(self, coord, token)
+		function checkDirection(self, coord, token, direction, times)
+			for i=1, times - 2, 1 do
+				if not (self.board[coord.x + i * (direction.x)][coord.y + i * (direction.y)] == token) then
+					return false
+				end
+			end
+			return true
+		end
+
+		local is_true = {}
+		for i=-1, 1, 1 do
+			for j=-1, 1, 1 do
+				if self.board[coord.x + i][coord.y + j] == token and not (j == 0 and i == 0) then
+					local new_coord = vmath.vector3(coord.x + i, coord.y + j, 0)
+					if checkDirection(self, new_coord, token, vmath.vector3(i, j, 0), 4) then
+						table.insert(is_true, true)
+					end
+				end
+			end
+		end
+		return is_true
+	end
+	
+	for i=1, self.columns, 1 do
+		for j=1, self.rows, 1 do
+			if self.board[i][j] ~= nil then
+				for i in pairs(checkAround(self, vmath.vector3(i, j, 0), self.board[i][j])) do
+					print(i, j)
+					print('4 IN A ROWWWWWWW')
+				end
+			end
+		end
+	end
+end
+	
