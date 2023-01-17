@@ -1,6 +1,9 @@
 function init(self)
-	msg.post('.', 'acquire_input_focus')
+	self.size = vmath.vector3()
+	self.size.x , self.size.y = window.get_size()
+	gui.set_position(gui.get_node('center_container'), vmath.vector3(self.size.x/2, self.size.y/2, 0))
 	self.click_nodes = {'1_Player', '2_Player'}
+	msg.post('.', 'acquire_input_focus')
 end
 
 function final(self)

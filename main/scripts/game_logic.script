@@ -6,12 +6,9 @@ function init(self)
 	self.list_coords_x = {}
 	self.factory_instances = {}
 	self.first_coord = vmath.vector3()
-	self.snap_coord = vmath.vector3(0, 680, 1)
 	self.board = {}
 	self.turn = false
 	self.started_snapping = false
-	self.connect_fours = {}
-	
 	local coord = vmath.vector3()
 	for i=0, self.columns-1, 1 do
 		self.factory_instances[i + 1] = {}
@@ -19,13 +16,14 @@ function init(self)
 			coord.x = (i*self.tile_size) + (self.size.x/2) - (self.columns * self.tile_size/2) + (self.tile_size/2)
 			coord.y = (j*self.tile_size) + (self.size.y/2) - (self.rows * self.tile_size/2) + (self.tile_size/2) - 50
 			self.factory_instances[i + 1][j + 1] = factory.create('#factory', vmath.vector3(coord.x, coord.y, 0))
-			if i == 0 and j == 0 then
-				self.first_coord = coord
+			if (i == 0 and j == self.rows-1) then
+				self.first_coord.x = coord.x
+				self.first_coord.y = coord.y
 			end
 		end
 		table.insert(self.list_coords_x, coord.x)
 	end
-
+	self.snap_coord = vmath.vector3(0, self.first_coord.y + self.tile_size, 1)
 	for i = 0, self.columns + 1, 1 do
 		self.board[i] = {}
 	end
@@ -34,7 +32,12 @@ end
 
 function on_input(self, action_id, action)
 	if action_id == nil then
-		self.snap_coord.x = (math.ceil((action.x-83 + (self.columns%2)*(self.tile_size/2))/self.tile_size) * self.tile_size) + 33 - (self.columns%2)*(self.tile_size/2)
+		local function snap_coords(self, pos)
+			local offset = (self.first_coord.x % self.tile_size)
+			local new_pos = offset + math.floor((pos + self.tile_size/2 - offset)/self.tile_size) * self.tile_size
+			return new_pos
+		end
+		self.snap_coord.x = snap_coords(self, action.x)
 		if self.started_snapping == false then
 			go.set_position(self.snap_coord, '/token')
 			self.started_snapping = true
@@ -75,20 +78,21 @@ function place(self, token)
 	if tableLength(self.board[index]) < self.rows then
 		table.insert(self.board[index], token)
 		coord.y = self.first_coord.y - (self.rows - tableLength(self.board[index])) * self.tile_size
+		print(coord.y)
 		coord.x = self.snap_coord.x
 		if not token then
-			local spawned = factory.create('/token_1_factory#factory', vmath.vector3(coord.x, 680, 1))
+			local spawned = factory.create('/token_1_factory#factory', vmath.vector3(coord.x, self.snap_coord.y, 1))
 			go.animate(spawned, 'position.y', go.PLAYBACK_ONCE_FORWARD, coord.y, go.EASING_OUTBOUNCE, 1)
 		elseif token then
-			local spawned = factory.create('/token_2_factory#factory', vmath.vector3(coord.x, 680, 1))
+			local spawned = factory.create('/token_2_factory#factory', vmath.vector3(coord.x, self.snap_coord.y, 1))
 			go.animate(spawned, 'position.y', go.PLAYBACK_ONCE_FORWARD, coord.y, go.EASING_OUTBOUNCE, 1)
 		end
 	end
 end
 
 function checkBoard(self)
-	function checkAround(self, coord, token)
-		function checkDirection(self, coord, token, direction, times)
+	local function checkAround(self, coord, token)
+		local function checkDirection(self, coord, token, direction, times)
 			for i=1, times - 2, 1 do
 				if not (self.board[coord.x + i * (direction.x)][coord.y + i * (direction.y)] == token) then
 					return {false}

@@ -7,10 +7,23 @@ shared_state = 1
 [display]
 width = 1366
 height = 768
+fullscreen = 0
 
 [android]
 input_method = HiddenInputField
 
 [project]
 title = Connect-4
+
+[collectionfactory]
+max_count = 1024
+
+[collection]
+max_instances = 1024
+
+[sprite]
+max_count = 1024
+
+[factory]
+max_count = 1024
 
