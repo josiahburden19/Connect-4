@@ -2,7 +2,7 @@ function init(self)
 	self.size = vmath.vector3()
 	self.size.x, self.size.y = window.get_size()
 	self.tile_size = 100
-	self.rows, self.columns = 6, 10
+	self.rows, self.columns = 6, 7
 	self.list_coords_x = {}
 	self.factory_instances = {}
 	self.first_coord = vmath.vector3()
@@ -34,7 +34,7 @@ end
 
 function on_input(self, action_id, action)
 	if action_id == nil then
-		self.snap_coord.x = (math.ceil((action.x-83)/self.tile_size) * self.tile_size) + 33 - (self.columns%2)*(self.tile_size/2)
+		self.snap_coord.x = (math.ceil((action.x-83 + (self.columns%2)*(self.tile_size/2))/self.tile_size) * self.tile_size) + 33 - (self.columns%2)*(self.tile_size/2)
 		if self.started_snapping == false then
 			go.set_position(self.snap_coord, '/token')
 			self.started_snapping = true
