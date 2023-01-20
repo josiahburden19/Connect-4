@@ -8,7 +8,7 @@ function init(self)
 	self.factory_instances = {}
 	self.first_coord = vmath.vector3()
 	self.board = {}
-	self.turn = false
+	self.turn = true
 	self.started_snapping = false
 	self.tokens = {{},{}}
 	local coord = vmath.vector3()
@@ -34,7 +34,7 @@ end
 
 function on_message(self, message_id, message, sender)
 	if message_id == hash('mode') then
-		print(message[1])
+		self.mode = messaage[1]
 	end
 end
 
@@ -87,7 +87,6 @@ function place(self, token)
 		end
 		table.insert(self.board[index], token)
 		coord.y = self.first_coord.y - (self.rows - tableLength(self.board[index])) * self.tile_size
-		print(coord.y)
 		coord.x = self.snap_coord.x
 		if not token then
 			local spawned = factory.create('/token_1_factory#factory', vmath.vector3(coord.x, self.snap_coord.y, 1))
@@ -136,10 +135,6 @@ function checkBoard(self)
 						go.animate(instance, 'tint', go.PLAYBACK_ONCE_FORWARD, vmath.vector4(0.5, 1, 0.4, 1), go.EASING_LINEAR, 1)
 					end
 					if k == 1 then
-						-- timer.delay(1, false, 
-						-- function()
-						-- 	msg.post(receiver, message_id)
-						-- )
 						msg.post('.', 'release_input_focus')
 						msg.post('/win_screen', 'enable')
 						if self.turn then
