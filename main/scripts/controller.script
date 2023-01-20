@@ -26,13 +26,17 @@ function on_message(self, message_id, message, sender)
 	if message_id == hash('proxy_loaded') then
 		msg.post(sender, 'enable')
 		self.current_collection = string.sub(tostring(sender), 23, -2)
+		if self.current_collection == '#game_proxy' then
+			msg.post('game:/main', 'mode', self.mode_message)
+		end
 	end
 	if message_id == hash('load_title') then
 		msg.post(self.current_collection, 'unload')
 		msg.post('#title_proxy', 'load')
 	elseif message_id == hash('load_game') then
 		msg.post(self.current_collection, 'unload')
-		msg.post('#game_proxy', 'load', message)
+		msg.post('#game_proxy', 'load')
+		self.mode_message = message
 	end
 end
 function on_input(self, action_id, action)
