@@ -64,18 +64,50 @@ function on_input(self, action_id, action)
 		end
 		if action_id == hash('touch') and action.pressed and indexOf(self.list_coords_x, self.place_coord.x) ~= nil then
 			place(self)
-			checkBoard(self)
+			checkBoard(self, self.board, true)
 		end
 	elseif (self.mode == 1 and self.turn == false) then
-		math.randomseed(os.time())
-		math.random()
-		local index = math.random(1, self.columns)
-		self.place_coord.x = self.list_coords_x[index]
+		if AiCheck(self, self.board, 1) == false then
+			math.randomseed(os.time())
+			local index = math.random(-1, 1)
+			self.place_coord.x = self.place_coord.x + index * self.tile_size
+			if self.place_coord.x < self.list_coords_x[1] then
+				self.place_coord.x = self.list_coords_x[1]
+			elseif self.place_coord.x > self.list_coords_x[tableLength(self.list_coords_x)] then
+				self.place_coord.x = self.list_coords_x[tableLength(self.list_coords_x)]
+			end
+		else
+			self.place_coord.x = AiCheck(self, self.board, 1)
+		end
 		place(self)
-		checkBoard(self)
+		checkBoard(self, self.board, true)
 	end
 end
 
+function AiCheck(self, board, times)
+	local function fakePlace(self, board, pos_x)
+		local coord = vmath.vector3()
+		local index = indexOf(self.list_coords_x, pos_x)
+		if tableLength(board[index]) < self.rows then
+			table.insert(board[index], not self.turn)
+			if checkBoard(self, board, false) then
+				table.remove(board[index], tableLength(board[index]))
+				return true
+			else
+				table.remove(board[index], tableLength(board[index]))
+				return false
+			end
+		end
+		return false
+	end
+	for i, v in ipairs(self.list_coords_x) do
+		print(v)
+		if fakePlace(self, board, v) then
+			return v
+		end
+	end
+	return false
+end
 
 function indexOf(array, value)
 	for i, v in ipairs(array) do
@@ -86,13 +118,13 @@ function indexOf(array, value)
 	return nil
 end
 
-function tableLength(t)
+function tableLength(table)
 	local count = 0
-	for _ in pairs(t) do count = count + 1 end
+	for _ in pairs(table) do count = count + 1 end
 	return count
 end
 
-function place(self)
+function place(self, mode)
 	local coord = vmath.vector3()
 	local index = indexOf(self.list_coords_x, self.place_coord.x)
 	if tableLength(self.board[index]) < self.rows then
@@ -115,11 +147,11 @@ function place(self)
 	end
 end
 
-function checkBoard(self)
+function checkBoard(self, board, mode)
 	local function checkAround(self, coord, token)
 		local function checkDirection(self, coord, token, direction, times)
 			for i=1, times - 2, 1 do
-				if not (self.board[coord.x + i * (direction.x)][coord.y + i * (direction.y)] == token) then
+				if not (board[coord.x + i * (direction.x)][coord.y + i * (direction.y)] == token) then
 					return {false}
 				end
 			end
@@ -129,7 +161,7 @@ function checkBoard(self)
 		local is_true = {}
 		for i=-1, 1, 1 do
 			for j=-1, 1, 1 do
-				if self.board[coord.x + i][coord.y + j] == token and not (j == 0 and i == 0) then
+				if board[coord.x + i][coord.y + j] == token and not (j == 0 and i == 0) then
 					local new_coord = vmath.vector3(coord.x + i, coord.y + j, 0)
 					local checked_direction = checkDirection(self, new_coord, token, vmath.vector3(i, j, 0), 4)
 					if checked_direction[1] then
@@ -143,26 +175,33 @@ function checkBoard(self)
 	
 	for i=1, self.columns, 1 do
 		for j=1, self.rows, 1 do
-			if self.board[i][j] ~= nil then
-				local checked_board = checkAround(self, vmath.vector3(i, j, 0), self.board[i][j])
+			if board[i][j] ~= nil then
+				local checked_board = checkAround(self, vmath.vector3(i, j, 0), board[i][j])
 				for k in pairs(checked_board) do
-					for l=0, 3, 1 do
-						local instance = tostring(self.factory_instances[i + l * (checked_board[k].x)][j + l * (checked_board[k].y)])
-						instance = string.sub(instance, 8, -2) .. '#sprite'
-						go.animate(instance, 'tint', go.PLAYBACK_ONCE_FORWARD, vmath.vector4(0.5, 1, 0.4, 1), go.EASING_LINEAR, 1)
-					end
-					if k == 1 then
-						msg.post('.', 'release_input_focus')
-						msg.post('/win_screen', 'enable')
-						if not self.turn then
-							msg.post('/win_screen', 'text', {'Blue Wins'})
-						elseif self.turn then
-							msg.post('/win_screen', 'text', {'White Wins'})
+					if mode then
+						for l=0, 3, 1 do
+							local instance = tostring(self.factory_instances[i + l * (checked_board[k].x)][j + l * (checked_board[k].y)])
+							instance = string.sub(instance, 8, -2) .. '#sprite'
+							go.animate(instance, 'tint', go.PLAYBACK_ONCE_FORWARD, vmath.vector4(0.5, 1, 0.4, 1), go.EASING_LINEAR, 1)
 						end
+						if k == 1 then
+							msg.post('.', 'release_input_focus')
+							msg.post('/win_screen', 'enable')
+							if not self.turn then
+								msg.post('/win_screen', 'text', {'Blue Wins'})
+							elseif self.turn then
+								msg.post('/win_screen', 'text', {'White Wins'})
+							end
+						end
+					elseif not mode then
+						return true
 					end
 				end
 			end
 		end
+	end
+	if not mode then
+		return false
 	end
 end
 	
