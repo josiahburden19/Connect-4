@@ -9,16 +9,17 @@ function init(self)
 	self.first_coord = vmath.vector3()
 	self.board = {}
 	self.turn = true
+	self.game_run = true
+	self.processing_turn = false
 	-- Blue == true
 	-- White == false
 	-- Set appropiate sprite for token
 	if self.turn then
-		sprite.play_flipbook('/token', 'token_2')
-	else
 		sprite.play_flipbook('/token', 'token_1')
+	else
+		sprite.play_flipbook('/token', 'token_2')
 	end
 	self.started_snapping = false
-	self.tokens = {{},{}}
 	local coord = vmath.vector3()
 	for i=0, self.columns-1, 1 do
 		self.factory_instances[i + 1] = {}
@@ -47,7 +48,7 @@ function on_message(self, message_id, message, sender)
 end
 
 function on_input(self, action_id, action)
-	if (self.mode == 2) or (self.mode == 1 and self.turn == true) then
+	if ((self.mode == 2) or (self.mode == 1 and self.turn and self.game_run)) then
 		-- 2 Player mode
 		local mouse_pos = vmath.vector3(action.x, action.y, 0)
 		local function snap_coords(self, pos)
@@ -62,11 +63,14 @@ function on_input(self, action_id, action)
 		else
 			go.animate('/token', 'position', go.PLAYBACK_ONCE_FORWARD, self.place_coord, go.EASING_OUTEXPO, 0.4)
 		end
-		if action_id == hash('touch') and action.pressed and indexOf(self.list_coords_x, self.place_coord.x) ~= nil then
+		if action_id == hash('touch') and action.pressed and indexOf(self.list_coords_x, self.place_coord.x) ~= nil and not self.processing_turn then
+			self.processing_turn = true
 			place(self)
 			checkBoard(self, self.board, true)
+			self.processing_turn = false
 		end
-	elseif (self.mode == 1 and self.turn == false) then
+	elseif (self.mode == 1 and not self.turn and self.game_run) and not self.processing_turn then
+		self.processing_turn = true
 		if AiCheck(self, self.board, 1) == false then
 			math.randomseed(os.time())
 			local index = math.random(-1, 1)
@@ -76,20 +80,26 @@ function on_input(self, action_id, action)
 			elseif self.place_coord.x > self.list_coords_x[tableLength(self.list_coords_x)] then
 				self.place_coord.x = self.list_coords_x[tableLength(self.list_coords_x)]
 			end
+			-- self.place_coord.x = self.first_coord.x
 		else
 			self.place_coord.x = AiCheck(self, self.board, 1)
 		end
-		place(self)
-		checkBoard(self, self.board, true)
+		go.animate('/token', 'position', go.PLAYBACK_ONCE_FORWARD, self.place_coord, go.EASING_OUTEXPO, 0.4, 0.1,
+		function()
+			place(self)
+			checkBoard(self, self.board, true)
+			self.processing_turn = false
+		end)
 	end
 end
-
 function AiCheck(self, board, times)
-	local function fakePlace(self, board, pos_x)
+	local function fakePlace(self, board, pos_x, token)
 		local coord = vmath.vector3()
 		local index = indexOf(self.list_coords_x, pos_x)
+		-- Drops a pretend token to simulate what would happen if the oppent made that move
+		-- It then uses this info to decide if it can block a 4 in a row
 		if tableLength(board[index]) < self.rows then
-			table.insert(board[index], not self.turn)
+			table.insert(board[index], token)
 			if checkBoard(self, board, false) then
 				table.remove(board[index], tableLength(board[index]))
 				return true
@@ -100,10 +110,11 @@ function AiCheck(self, board, times)
 		end
 		return false
 	end
-	for i, v in ipairs(self.list_coords_x) do
-		print(v)
-		if fakePlace(self, board, v) then
-			return v
+	for j, k in ipairs({false, true}) do
+		for i, v in ipairs(self.list_coords_x) do
+			if fakePlace(self, board, v, k) then
+				return v
+			end
 		end
 	end
 	return false
@@ -131,23 +142,23 @@ function place(self, mode)
 		table.insert(self.board[index], self.turn)
 		coord.y = self.first_coord.y - (self.rows - tableLength(self.board[index])) * self.tile_size
 		coord.x = self.place_coord.x
-		if not self.turn then
+		if self.turn then
 			local spawned = factory.create('/token_1_factory#factory', vmath.vector3(coord.x, self.place_coord.y, 1))
 			go.animate(spawned, 'position.y', go.PLAYBACK_ONCE_FORWARD, coord.y, go.EASING_OUTBOUNCE, 1)
-		elseif self.turn then
+		elseif not self.turn then
 			local spawned = factory.create('/token_2_factory#factory', vmath.vector3(coord.x, self.place_coord.y, 1))
 			go.animate(spawned, 'position.y', go.PLAYBACK_ONCE_FORWARD, coord.y, go.EASING_OUTBOUNCE, 1)
 		end
-		self.turn = not self.turn
 		if self.turn then
 			sprite.play_flipbook('/token', 'token_2')
 		else
 			sprite.play_flipbook('/token', 'token_1')
 		end
+		self.turn = not self.turn
 	end
 end
 
-function checkBoard(self, board, mode)
+function checkBoard(self, board, mode, token)
 	local function checkAround(self, coord, token)
 		local function checkDirection(self, coord, token, direction, times)
 			for i=1, times - 2, 1 do
@@ -185,12 +196,14 @@ function checkBoard(self, board, mode)
 							go.animate(instance, 'tint', go.PLAYBACK_ONCE_FORWARD, vmath.vector4(0.5, 1, 0.4, 1), go.EASING_LINEAR, 1)
 						end
 						if k == 1 then
+							self.game_end = false
 							msg.post('.', 'release_input_focus')
 							msg.post('/win_screen', 'enable')
+							msg.post('/win_screen', 'game_end')
 							if not self.turn then
-								msg.post('/win_screen', 'text', {'Blue Wins'})
-							elseif self.turn then
 								msg.post('/win_screen', 'text', {'White Wins'})
+							elseif self.turn then
+								msg.post('/win_screen', 'text', {'Blue Wins'})
 							end
 						end
 					elseif not mode then
