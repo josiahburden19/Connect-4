@@ -69,7 +69,7 @@ function on_input(self, action_id, action)
 			checkBoard(self, self.board, true)
 			self.processing_turn = false
 		end
-	elseif (self.mode == 1 and not self.turn and self.game_run) and not self.processing_turn then
+	elseif (self.mode == 1 and not self.turn and self.game_run and not self.processing_turn) then
 		self.processing_turn = true
 		if AiCheck(self, self.board, 1) == false then
 			math.randomseed(os.time())
@@ -80,7 +80,16 @@ function on_input(self, action_id, action)
 			elseif self.place_coord.x > self.list_coords_x[tableLength(self.list_coords_x)] then
 				self.place_coord.x = self.list_coords_x[tableLength(self.list_coords_x)]
 			end
-			-- self.place_coord.x = self.first_coord.x
+			local new_index = indexOf(self.list_coords_x, self.place_coord.x)
+			if tableLength(self.board[new_index]) >= self.rows then
+				for i, v in ipairs(self.board) do
+					if tableLength(v) < self.rows then
+						new_index = self.list_coords_x[i]
+						self.place_coord.x = new_index
+						break
+					end
+				end
+			end
 		else
 			self.place_coord.x = AiCheck(self, self.board, 1)
 		end
@@ -196,14 +205,16 @@ function checkBoard(self, board, mode, token)
 							go.animate(instance, 'tint', go.PLAYBACK_ONCE_FORWARD, vmath.vector4(0.5, 1, 0.4, 1), go.EASING_LINEAR, 1)
 						end
 						if k == 1 then
-							self.game_end = false
-							msg.post('.', 'release_input_focus')
-							msg.post('/win_screen', 'enable')
-							msg.post('/win_screen', 'game_end')
-							if not self.turn then
-								msg.post('/win_screen', 'text', {'White Wins'})
-							elseif self.turn then
-								msg.post('/win_screen', 'text', {'Blue Wins'})
+							if self.game_run then
+								self.game_run = false
+								msg.post('.', 'release_input_focus')
+								msg.post('/win_screen', 'enable')
+								msg.post('/win_screen', 'game_end')
+								if not self.turn then
+									msg.post('/win_screen', 'text', {'White Wins'})
+								elseif self.turn then
+									msg.post('/win_screen', 'text', {'Blue Wins'})
+								end
 							end
 						end
 					elseif not mode then
