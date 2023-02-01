@@ -119,7 +119,8 @@ function AiCheck(self, board, times)
 		end
 		return false
 	end
-	for j, k in ipairs({false, true}) do
+	local proirity = {self.turn, not self.turn}
+	for j, k in ipairs(proirity) do
 		for i, v in ipairs(self.list_coords_x) do
 			if fakePlace(self, board, v, k) then
 				return v
@@ -202,7 +203,10 @@ function checkBoard(self, board, mode, token)
 						for l=0, 3, 1 do
 							local instance = tostring(self.factory_instances[i + l * (checked_board[k].x)][j + l * (checked_board[k].y)])
 							instance = string.sub(instance, 8, -2) .. '#sprite'
-							go.animate(instance, 'tint', go.PLAYBACK_ONCE_FORWARD, vmath.vector4(0.5, 1, 0.4, 1), go.EASING_LINEAR, 1)
+							timer.delay(1, false,
+							function()
+								go.animate(instance, 'tint', go.PLAYBACK_ONCE_FORWARD, vmath.vector4(0.5, 1, 0.4, 1), go.EASING_LINEAR, 1)
+							end)
 						end
 						if k == 1 then
 							if self.game_run then

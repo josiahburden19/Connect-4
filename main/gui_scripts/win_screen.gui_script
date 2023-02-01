@@ -1,6 +1,7 @@
 function init(self)
 	self.size = vmath.vector3()
 	self.size.x , self.size.y = window.get_size()
+	self.space = false
 	gui.set_position(gui.get_node('center_container'), vmath.vector3(self.size.x/2, self.size.y/2, 0))
 	msg.post('.', 'acquire_input_focus')
 end
@@ -31,5 +32,16 @@ end
 function on_message(self, message_id, message, sender)
 	if message_id == hash('text') then
 		gui.set_text(gui.get_node('winner'), message[1])
+	end
+	if message_id == hash('enable')and not self.space then
+		local container = gui.get_node('center_container')
+		gui.set_alpha(container, 0)
+		timer.delay(2, false,
+		function()
+			gui.animate(container, 'color.w', 1, go.EASING_LINEAR, 1.5)
+		end)
+	end
+	if message_id == hash('space') then
+		self.space = true
 	end
 end
